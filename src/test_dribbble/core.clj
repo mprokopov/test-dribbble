@@ -134,3 +134,22 @@
 
 (def dribbble2 (Pattern. "host(dribbble.com); path(shots/?id); queryparam(offset=?offset); queryparam(list=?type);"))
 
+(use 'clojure.test)
+
+(deftest test-recognize-twitter
+  (is (= (recognize twitter "http://twitter.com/bradfitz/status/562360748727611392")
+         [[:id 562360748727611392] [:user "bradfitz"]])))
+
+(deftest test-recognize-dribble
+  (is (= (recognize dribbble "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1")
+         [[:id "1905065-Travel-Icons-pack"] [:offset "1"]])))
+
+(deftest test-fail-recognize-offset-missing
+  (is (= (recognize dribbble "https://twitter.com/shots/1905065-Travel-Icons-pack?list=users")
+         nil)))
+
+(deftest test-fail-recognize-dribble2
+  (is (= (recognize dribbble "https://twitter.com/shots/1905065-Travel-Icons-pack?list=users&offset=1")
+         nil)))
+
+(test-ns 'test-dribbble.core)
