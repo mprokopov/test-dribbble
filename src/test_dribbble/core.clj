@@ -20,16 +20,16 @@
 (recognize twitter "http://twitter.com/bradfitz/status/562360748727611392")
 ;; => [[:id 562360748727611392] [:user "bradfitz"]]
 
-(let [[_ _ user id]  (re-matches #"[a-z]+://(twitter.com)/(.+)/status/(.+)"   "http://twitter.com/bradfitz/status/562360748727611392")]
-  [:id id
-   :user user])
+;; (let [[_ _ user id]  (re-matches #"[a-z]+://(twitter.com)/(.+)/status/(.+)"   "http://twitter.com/bradfitz/status/562360748727611392")]
+;;   [:id id
+;;    :user user])
 
 
 (defn url->map [url]
   "returns URL parsed to map"
   (let [[_ schema domain path queryparam]  (re-matches #"([a-z]+)://([^/]+)/([^\?]*)[\?]?(.*)"   url)]
     {:schema schema
-     :domain domain
+     :host domain
      :path path
      :queryparam queryparam}))
 
@@ -75,48 +75,66 @@
 ;; (get-vals arr-2)
 ;; (get-vals arr-3)
 ;; (get-vals arr-4)
+(retrieve-pattern arr-1)
 (retrieve-pattern arr-2)
 (retrieve-pattern arr-3)
 (retrieve-pattern arr-4)
 
 ;; (re-matches #".*\?(.*)" "list=?type")
 
-(defn parse-str-keys [strn arr-keys]
-  (let [url-map (url->map strn)
-        [k1 _ key-name rexp] arr-keys
-        tested-val ((keyword k1) url-map)
-        [_ matched] (re-matches (re-pattern (str ".*" rexp)) tested-val)]
-    [(keyword key-name) matched]))
+;; (defn parse-str-keys [strn arr-keys]
+;;   (let [url-map (url->map strn)
+;;         [k1 _ key-name rexp] arr-keys
+;;         tested-val ((keyword k1) url-map)
+;;         [_ matched] (re-matches (re-pattern (str ".*" rexp)) tested-val)]
+;;     [(keyword key-name) matched]))
 
 (defn retrieve-values [url pattern]
-  (let [url-map (url->map url)
-        [k1 _ keys-arr rexp] (retrieve-pattern pattern)
-        tested-val ((keyword k1) url-map)
-        matched (rest (re-matches (re-pattern rexp) tested-val))
+  (let [url-map (url->map url) ;; (url->map "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1")
+        [k1 _ keys-arr rexp] (retrieve-pattern pattern) ;; (retrieve-pattern arr-1)
+        tested-val ((keyword k1) url-map) ;; (re-find (re-pattern "(.*)/status/(.*)") "bradfitz/status/562360748727611392")
+        [is-found & matched] (re-find (re-pattern rexp) tested-val) ;; (re-find (re-pattern "dribbble.com") "dribbble.com")
         result-map (zipmap (map keyword keys-arr) matched)]
-    (vec result-map)))
+    (when is-found (vec result-map))))
+
+;; (re-find (re-pattern "offset=(.*)") "list=users&offset=1")
+
+;; (let [[is-found & found] (re-find (re-pattern "(.*)/status/(.*)") "bradfitz/status/562360748727611392")]
+;;   is-found)
+
+;; (let [[is-found & found] (re-find (re-pattern "(.*)/status/(.*)") "bradfitz/status/562360748727611392")]
+;;   (vec found))
+
 
 (retrieve-values "http://twitter.com/bradfitz/status/562360748727611392" arr-4)
+(retrieve-values "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1" arr-1)
+(retrieve-values "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1" arr-2)
+(retrieve-values "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1" arr-3)
 
-(re-matches #"(.*)/status/(.*)" "/bradfitz/status/562360748727611392")
+;; (let [url "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1"
+;;       patterns (parse-keys "host(dribbble.com); path(shots/?id); queryparam(offset=?offset);")
+;;       pattern (last patterns)]
+;;   (map #(retrieve-values url %) patterns))
 
-(parse-str-keys "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1" (get-vals arr-2))
-(parse-str-keys "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1" (get-vals arr-3))
-(parse-str-keys "http://twitter.com/bradfitz/status/562360748727611392" (last (parse-keys "host(twitter.com); path(?user/status/?id);")))
-;; (let [host "host(dribbble.com)"
-;;       path "path(shots/?id)"
-;;       queryparam "123"]
-;;   (match [host path queryparam]
-;;          ["host(dribbble.com)" "path(shots/?id)" _] 1))
+(defn recognize2 [url pattern]
+  (let [patterns (parse-keys pattern)
+        coll (map #(retrieve-values url %) patterns)
+        is-invalid (some nil? coll)]
+    (when-not is-invalid coll)))
+
+(recognize2 "http://twitter.com/mprokopov/status/5748727611392/asdfsdf" "host(twitter.com); path(?user/status/?id/?sdf);")
+(recognize2 "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1" "host(dribbble.com); path(shots/?id); queryparam(offset=?offset);")
+
+;; (re-matches #"(.*)/status/(.*)" "/bradfitz/status/562360748727611392")
 
 
-(def pat (re-pattern "http[s]?://dribbble.com/shots/(.*)\\?list=users&offset=(.+)"))
-(re-matches pat "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1")
+;; (def pat (re-pattern "http[s]?://dribbble.com/shots/(.*)\\?list=users&offset=(.+)"))
+;; (re-matches pat "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1")
 
-(let [host "dribbble.com"
-      path "shots/"
-      pat (str "http[s]?://" host "/" path "(.*)\\?list=users&offset=(.+)")]
-  (re-matches (re-pattern pat) "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1"))
+;; (let [host "dribbble.com"
+;;       path "shots/"
+;;       pat (str "http[s]?://" host "/" path "(.*)\\?list=users&offset=(.+)")]
+;;   (re-matches (re-pattern pat) "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1"))
 
 (def dribbble (Pattern. "host(dribbble.com); path(shots/?id); queryparam(offset=?offset);"))
 (recognize dribbble "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1")
