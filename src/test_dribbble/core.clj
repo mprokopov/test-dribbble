@@ -1,5 +1,6 @@
 (ns test-dribbble.core
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.data.json :as json]))
 
 (defn map->vec [input]
   (reduce #(into %1 %2) [] input))
@@ -68,3 +69,45 @@
 
 ;; (use 'clojure.test)
 ;; (test-ns 'test-dribbble.core)
+(def access-token "d967dfcaa929b629ff6cf84c437dceea795dd3ba49260225dc5d03672446912e")
+(defn followers-url [user] (str "users/" user "/followers"))
+(defn shots-url [user] (str "users/" user "/shots"))
+(defn shot-likes-url [shot] (str "shots/" shot "/likes"))
+(defn api-url [part] (str "https://api.dribbble.com/v1/" part "?access_token=" access-token))
+
+(api-url (followers-url "simplebits"))
+(def data (json/read-str (-> "simplebits" followers-url api-url slurp)))
+
+(json/pprint-json data)
+(count data) ;; собрать follower_ids в массив
+(def username (get-in (first data) ["follower" "username"]))
+
+(defn get-shots [username] (json/read-str (-> username shots-url api-url slurp)))
+(def shots (get-shots "Fireart-d"))
+
+;; (defn get-shots-likes [shots]
+;;     (map #(get % "likes_count") shots))
+
+(defn get-shots-likes [shot]
+  (json/read-str (-> shot shot-likes-url api-url slurp)))
+
+(get-shots-likes 2810652)
+(json/pprint-json (get-shots-likes 2810652))
+
+(defn get-followers [username]
+  (let [data (json/read-str (-> username followers-url api-url slurp))]
+   (map #(get-in % ["follower" "username"]) data)))
+
+(get-followers "Fireart-d")
+
+(def likes
+  (let [followers (get-followers "Fireart-d")
+        first-follower (last followers)
+        follower-shots (get-shots first-follower)
+        shot-id (get (first follower-shots) "id")
+        likes (get-shots-likes shot-id)
+        likers (map #(get-in % ["user" "username"]) likes)]
+    likers))
+
+;; (map #(get-in % ["user" "username"]) likes)
+;; (json/pprint-json likes)
