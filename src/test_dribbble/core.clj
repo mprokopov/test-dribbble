@@ -82,17 +82,16 @@
 (count data) ;; собрать follower_ids в массив
 (def -username (get-in (first data) ["follower" "username"]))
 
-(defn get-shots [username] (json/read-str (-> username shots-url api-url slurp)))
+(defn get-shots [username] (when username (json/read-str (-> username shots-url api-url slurp))))
 (def shots (get-shots "Fireart-d"))
 
-;; (defn get-shots-likes [shots]
-;;     (map #(get % "likes_count") shots))
-
 (defn get-shots-likes [shot]
-  (json/read-str (-> shot shot-likes-url api-url slurp)))
+  "returns likes struct for given shot"
+  (when shot
+    (json/read-str (-> shot shot-likes-url api-url slurp))))
 
-(get-shots-likes 2810652)
-(json/pprint-json (get-shots-likes 2810652))
+;; (get-shots-likes 2810652)
+;; (json/pprint-json (get-shots-likes 2810652))
 
 (defn get-followers [username]
   (let [data (json/read-str (-> username followers-url api-url slurp))]
@@ -118,6 +117,20 @@
     (reduce append-username coll likers)))
 
 (aggregate-likers "Fireart-d")
+
+
+
+
+(let [coll {}
+      followers (get-followers "Fireart-d")
+      first-follower (last followers)
+;;         follower-shots (get-shots first-follower) ;; (get-shots "chris_sukovich")
+      follower-shots  (get-shots "chris_sukovich")]
+    (for [shot follower-shots
+            :let [shot-id (get shot "id")
+                  likes (get-shots-likes shot-id)
+                  likers (map #(get-in % ["user" "username"]) likes)]]
+        (reduce append-username coll likers)))
 
 ;; (def likers ["BrettCallaghan" "AldoHysenaj" "leolu" "angerka" "huseyinemanet" "angelalejandro" "tangxiangle" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
 ;; (def likers2 ["BrettCallaghan" "AldoHysenaj" "leolu" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
