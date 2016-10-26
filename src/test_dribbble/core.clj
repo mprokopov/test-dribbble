@@ -80,7 +80,7 @@
 
 (json/pprint-json data)
 (count data) ;; собрать follower_ids в массив
-(def username (get-in (first data) ["follower" "username"]))
+(def -username (get-in (first data) ["follower" "username"]))
 
 (defn get-shots [username] (json/read-str (-> username shots-url api-url slurp)))
 (def shots (get-shots "Fireart-d"))
@@ -100,14 +100,32 @@
 
 (get-followers "Fireart-d")
 
-(def likes
-  (let [followers (get-followers "Fireart-d")
+(defn append-username [users-map username]
+  (if (contains? users-map username)
+    (update users-map username inc)
+    (assoc users-map username 1)))
+
+(defn aggregate-likers [username] ;; "Fireart-d"
+  "returns "
+  (let [coll {}
+        followers (get-followers username)
         first-follower (last followers)
-        follower-shots (get-shots first-follower)
+;;         follower-shots (get-shots first-follower) ;; (get-shots "chris_sukovich")
+        follower-shots  (get-shots "chris_sukovich")
         shot-id (get (first follower-shots) "id")
         likes (get-shots-likes shot-id)
         likers (map #(get-in % ["user" "username"]) likes)]
-    likers))
+    (reduce append-username coll likers)))
+
+(aggregate-likers "Fireart-d")
+
+;; (def likers ["BrettCallaghan" "AldoHysenaj" "leolu" "angerka" "huseyinemanet" "angelalejandro" "tangxiangle" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
+;; (def likers2 ["BrettCallaghan" "AldoHysenaj" "leolu" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
+
+
+
+;; (def global-likers (reduce append-username {} likers))
+;; (reduce append-username global-likers likers2)
 
 ;; (map #(get-in % ["user" "username"]) likes)
 ;; (json/pprint-json likes)
