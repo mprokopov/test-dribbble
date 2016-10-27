@@ -1,6 +1,7 @@
 (ns test-dribbble.core
   (:require [clojure.string :as str]
-            [clojure.data.json :as json]))
+            [clojure.data.json :as json]
+            [clojure.pprint :refer [pprint]]))
 
 (defn map->vec [input]
   (reduce #(into %1 %2) [] input))
@@ -118,18 +119,19 @@
 
 (defn get-followers-likes2 [username]
   "returns full map of followers with likes count for their shots"
-  (let [ followers (get-followers username)]
-    (loop [followers (get-followers username)
-           acc {}]
-      (let [follower (first followers)]
-        (if (empty? followers)
-          acc
-          (recur (rest followers) (aggregate-follower-shots (get-shots follower) acc)))))))
+  (loop [followers (get-followers username)
+         acc {}]
+    (let [follower (first followers)]
+      (if (empty? followers)
+        acc
+        (recur (rest followers) (aggregate-follower-shots (get-shots follower) acc))))))
 
 (defn top-10-likers [username]
   (let [likes-counted (get-followers-likes2 username)]
     (take 10 (reverse (sort-by val likes-counted)))))
 
-(top-10-likers "Fireart-d")
+;; (top-10-likers "Fireart-d")
 ;; (["qpoziomek" 10] ["YZ0117" 9] ["sThig" 6] ["karliszarins" 6] ["basovdesign" 6] ["CoupleInTheShuttle" 6] ["worawaluns" 5] ["mlsdev" 5] ["XC_Design" 5] ["angerka" 4])
 
+(defn -main [name]
+  (pprint (top-10-likers name))) ;; "Fireart-d"
