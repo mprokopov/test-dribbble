@@ -66,24 +66,21 @@
 ;; => nil ;; offset queryparam missing
 
 (def dribbble2 (Pattern. "host(dribbble.com); path(shots/?id); queryparam(offset=?offset); queryparam(list=?type);"))
-
+(recognize dribbble2 "https://dribbble.com/shots/1905065-Travel-Icons-pack?list=users&offset=1")
 ;; (use 'clojure.test)
 ;; (test-ns 'test-dribbble.core)
+
 (def access-token "d967dfcaa929b629ff6cf84c437dceea795dd3ba49260225dc5d03672446912e")
 (defn followers-url [user] (str "users/" user "/followers"))
 (defn shots-url [user] (str "users/" user "/shots"))
 (defn shot-likes-url [shot] (str "shots/" shot "/likes"))
 (defn api-url [part] (str "https://api.dribbble.com/v1/" part "?access_token=" access-token))
 
-(api-url (followers-url "simplebits"))
-(def data (json/read-str (-> "simplebits" followers-url api-url slurp)))
-
-(json/pprint-json data)
-(count data) ;; собрать follower_ids в массив
-(def -username (get-in (first data) ["follower" "username"]))
+;; (api-url (followers-url "simplebits"))
+;; (def data (json/read-str (-> "simplebits" followers-url api-url slurp)))
 
 (defn get-shots [username] (when username (json/read-str (-> username shots-url api-url slurp))))
-(def shots (get-shots "Fireart-d"))
+;; (def shots (get-shots "Fireart-d"))
 
 (defn get-shots-likes [shot]
   "returns likes struct for given shot"
@@ -94,10 +91,11 @@
 ;; (json/pprint-json (get-shots-likes 2810652))
 
 (defn get-followers [username]
+  "returns vector of followers usernames"
   (let [data (json/read-str (-> username followers-url api-url slurp))]
    (map #(get-in % ["follower" "username"]) data)))
 
-(get-followers "Fireart-d")
+;; (get-followers "Fireart-d")
 
 (defn append-username [users-map username]
   "inc counter for existing or append new username"
@@ -105,60 +103,33 @@
     (update users-map username inc)
     (assoc users-map username 1)))
 
-(defn aggregate-likers [username] ;; "Fireart-d"
-  "returns map of likers with count"
-  (let [coll {}
-        followers (get-followers username)
-        first-follower (last followers)
-;;         follower-shots (get-shots first-follower) ;; (get-shots "chris_sukovich")
-        follower-shots  (get-shots "chris_sukovich")
-        shot-id (get (first follower-shots) "id")
+;; (def sample-shots (read-string (slurp "resources/shots.edn")))
+
+
+(defn aggregate-follower-shots [shots coll]
+  "returns aggregated for followers and likes count for shot"
+  (let [shot (first shots)
+        shot-id (get shot "id")
         likes (get-shots-likes shot-id)
         likers (map #(get-in % ["user" "username"]) likes)]
-    (reduce append-username coll likers)))
+      (if (empty? shots)
+        coll
+        (recur (rest shots) (reduce append-username coll likers)))))
 
-(aggregate-likers "Fireart-d")
-
-
-(def sample-shots (read-string (slurp "resources/shots.edn")))
-
-;; (let [coll {}
-;;       followers (get-followers "Fireart-d")
-;;       first-follower (last followers)
-;; ;;         follower-shots (get-shots first-follower) ;; (get-shots "chris_sukovich")
-;; ;;       follower-shots  (get-shots "chris_sukovich")]
-;;       follower-shots sample-shots]
-;;     (for [shot follower-shots
-;;             :let [shot-id (get shot "id")
-;;                   likes (get-shots-likes shot-id)
-;;                   likers (map #(get-in % ["user" "username"]) likes)]]
-;;         (reduce append-username coll likers)))
-(defn get-followers-likes [username]
-  (let [coll {}
-        followers (get-followers username)]
-;;       first-follower (last followers)]
-;;         follower-shots (get-shots first-follower) ;; (get-shots "chris_sukovich")
-;;       follower-shots  (get-shots "chris_sukovich")]
-
-    (loop [follower-shots sample-shots
-           acc coll]
-      (let [shot (first follower-shots)
-            shot-id (get shot "id")
-            likes (get-shots-likes shot-id)
-            likers (map #(get-in % ["user" "username"]) likes)]
-        (if (empty? follower-shots)
+(defn get-followers-likes2 [username]
+  "returns full map of followers with likes count for their shots"
+  (let [ followers (get-followers username)]
+    (loop [followers (get-followers username)
+           acc {}]
+      (let [follower (first followers)]
+        (if (empty? followers)
           acc
-          (recur (rest follower-shots) (reduce append-username acc likers)))))))
+          (recur (rest followers) (aggregate-follower-shots (get-shots follower) acc)))))))
 
-(def likes-counted (get-followers-likes "Fireart-d"))
-(take 10 (reverse (sort-by val likes-counted)))
-;; (def likers ["BrettCallaghan" "AldoHysenaj" "leolu" "angerka" "huseyinemanet" "angelalejandro" "tangxiangle" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
-;; (def likers2 ["BrettCallaghan" "AldoHysenaj" "leolu" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
+(defn top-10-likers [username]
+  (let [likes-counted (get-followers-likes2 username)]
+    (take 10 (reverse (sort-by val likes-counted)))))
 
+(top-10-likers "Fireart-d")
+;; (["qpoziomek" 10] ["YZ0117" 9] ["sThig" 6] ["karliszarins" 6] ["basovdesign" 6] ["CoupleInTheShuttle" 6] ["worawaluns" 5] ["mlsdev" 5] ["XC_Design" 5] ["angerka" 4])
 
-
-;; (def global-likers (reduce append-username {} likers))
-;; (reduce append-username global-likers likers2)
-
-;; (map #(get-in % ["user" "username"]) likes)
-;; (json/pprint-json likes)
