@@ -100,12 +100,13 @@
 (get-followers "Fireart-d")
 
 (defn append-username [users-map username]
+  "inc counter for existing or append new username"
   (if (contains? users-map username)
     (update users-map username inc)
     (assoc users-map username 1)))
 
 (defn aggregate-likers [username] ;; "Fireart-d"
-  "returns "
+  "returns map of likers with count"
   (let [coll {}
         followers (get-followers username)
         first-follower (last followers)
@@ -119,19 +120,38 @@
 (aggregate-likers "Fireart-d")
 
 
+(def sample-shots (read-string (slurp "resources/shots.edn")))
 
-
-(let [coll {}
-      followers (get-followers "Fireart-d")
-      first-follower (last followers)
+;; (let [coll {}
+;;       followers (get-followers "Fireart-d")
+;;       first-follower (last followers)
+;; ;;         follower-shots (get-shots first-follower) ;; (get-shots "chris_sukovich")
+;; ;;       follower-shots  (get-shots "chris_sukovich")]
+;;       follower-shots sample-shots]
+;;     (for [shot follower-shots
+;;             :let [shot-id (get shot "id")
+;;                   likes (get-shots-likes shot-id)
+;;                   likers (map #(get-in % ["user" "username"]) likes)]]
+;;         (reduce append-username coll likers)))
+(defn get-followers-likes [username]
+  (let [coll {}
+        followers (get-followers username)]
+;;       first-follower (last followers)]
 ;;         follower-shots (get-shots first-follower) ;; (get-shots "chris_sukovich")
-      follower-shots  (get-shots "chris_sukovich")]
-    (for [shot follower-shots
-            :let [shot-id (get shot "id")
-                  likes (get-shots-likes shot-id)
-                  likers (map #(get-in % ["user" "username"]) likes)]]
-        (reduce append-username coll likers)))
+;;       follower-shots  (get-shots "chris_sukovich")]
 
+    (loop [follower-shots sample-shots
+           acc coll]
+      (let [shot (first follower-shots)
+            shot-id (get shot "id")
+            likes (get-shots-likes shot-id)
+            likers (map #(get-in % ["user" "username"]) likes)]
+        (if (empty? follower-shots)
+          acc
+          (recur (rest follower-shots) (reduce append-username acc likers)))))))
+
+(def likes-counted (get-followers-likes "Fireart-d"))
+(take 10 (reverse (sort-by val likes-counted)))
 ;; (def likers ["BrettCallaghan" "AldoHysenaj" "leolu" "angerka" "huseyinemanet" "angelalejandro" "tangxiangle" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
 ;; (def likers2 ["BrettCallaghan" "AldoHysenaj" "leolu" "DesignAvenger" "abhishek_omninos" "Coredevs" "xalion" "JasonZjc"])
 
